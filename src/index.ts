@@ -177,8 +177,14 @@ export function create(page: Page, options: PlaycastOptions = {}) {
 
   type BoundingBox = { x: number; y: number; width: number; height: number };
 
+  const getVisualViewport = () =>
+    page.evaluate(() => {
+      const v = window.visualViewport!;
+      return { left: v.offsetLeft, top: v.offsetTop, width: v.width, height: v.height, scale: v.scale };
+    });
+
   const pinchTo = async (target: Locator | BoundingBox, opts: ZoomObj = {}) => {
-    const scaleFactor = opts.scale ?? defaultScale;
+    const targetScale = opts.scale ?? defaultScale;
     const settle = opts.settleMs ?? settleMs;
     const relativeSpeed = opts.relativeSpeed ?? 600;
 
@@ -186,15 +192,61 @@ export function create(page: Page, options: PlaycastOptions = {}) {
     let box = isLocator ? null : target;
     if (isLocator) {
       await target.waitFor({ timeout: defaultTimeout });
-      await smoothScrollIntoView(target);
+      if (currentScale <= 1) await smoothScrollIntoView(target);
       box = await target.boundingBox();
     }
     if (!box) return;
-    const x = Math.round(box.x + box.width / 2);
-    const y = Math.round(box.y + box.height / 2);
-    await cdp.send(PINCH, { x, y, scaleFactor, relativeSpeed });
+    const vp = page.viewportSize()!;
+    const ex = box.x + box.width / 2;
+    const ey = box.y + box.height / 2;
+
+    const cs = currentScale;
+    const ts = targetScale;
+    const sf = ts / cs; // relative scaleFactor for CDP
+
+    if (Math.abs(sf - 1) < 0.01) {
+      // Same zoom level — pan via scroll gesture to re-center on element
+      const vv = await getVisualViewport();
+      const dxCss = ex - (vv.left + vv.width / 2);
+      const dyCss = ey - (vv.top + vv.height / 2);
+      await cdp.send('Input.synthesizeScrollGesture', {
+        x: Math.round(vv.width / 2),
+        y: Math.round(vv.height / 2),
+        xDistance: Math.round(-dxCss * vv.scale),
+        yDistance: Math.round(-dyCss * vv.scale),
+        preventFling: true,
+        speed: relativeSpeed * 3,
+      });
+    } else {
+      // Different zoom level — compute optimal anchor.
+      // CDP pinch coords are in visual-viewport-relative space (0,0 = top-left of visible area).
+      // The anchor formula places the element center at the screen center after zoom.
+      //
+      // Screen position of a CSS layout-viewport point (cx) relative to the visual viewport:
+      //   screenX = (cx − vvL) · cs
+      // After pinch at anchor screenAx with relative factor sf:
+      //   new_screenX = screenAx + (screenX − screenAx) · sf
+      // Set new_screenX = W/2 (screen center), solve for screenAx:
+      //   screenAx = (W/2 − screenX · sf) / (1 − sf)
+      // Convert screen anchor to visual-viewport CSS coords for CDP:
+      //   cdpX = screenAx / cs
+      const vv = cs > 1
+        ? await getVisualViewport()
+        : { left: 0, top: 0, width: vp.width, height: vp.height };
+      const screenElX = (ex - vv.left) * cs;
+      const screenElY = (ey - vv.top) * cs;
+      const screenAnchorX = (vp.width / 2 - screenElX * sf) / (1 - sf);
+      const screenAnchorY = (vp.height / 2 - screenElY * sf) / (1 - sf);
+      // Convert to visual-viewport CSS coords and clamp to valid range
+      const idealX = screenAnchorX / cs;
+      const idealY = screenAnchorY / cs;
+      const x = Math.round(Math.max(0, Math.min(vv.width - 1, idealX)));
+      const y = Math.round(Math.max(0, Math.min(vv.height - 1, idealY)));
+      await cdp.send(PINCH, { x, y, scaleFactor: sf, relativeSpeed });
+    }
+
     await startGlassPatch();
-    currentScale = scaleFactor;
+    currentScale = targetScale;
     await page.waitForTimeout(settle);
   };
 
@@ -262,10 +314,10 @@ export function create(page: Page, options: PlaycastOptions = {}) {
   const zoom = pinchTo;
 
   const zoomOut = async () => {
-    const { x, y } = await page.evaluate(() => {
-      const vv = window.visualViewport!;
-      return { x: Math.round(vv.width / 2), y: Math.round(vv.height / 2) };
-    });
+    const vv = await getVisualViewport();
+    // CDP coords are in visual viewport space (0,0 = top-left of visible area)
+    const x = Math.round(vv.width / 2);
+    const y = Math.round(vv.height / 2);
     const scaleFactor = 1 / currentScale;
     await cdp.send(PINCH, { x, y, scaleFactor, relativeSpeed: 600 });
     await stopGlassPatch();

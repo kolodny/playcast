@@ -1,6 +1,6 @@
 {
   "name": "playcast",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Record Playwright walkthroughs with zoom, keystroke overlays, and speed control",
   "keywords": [
     "playwright",
@@ -41,6 +41,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "demos": "for f in demos/*.ts; do tsx \"$f\"; done",
+    "postdemos": "ffmpeg -y -i assets/timing.mp4 assets/timing.gif && rm assets/timing.mp4",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
