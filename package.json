@@ -1,6 +1,6 @@
 {
   "name": "playcast",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Record Playwright walkthroughs with zoom, keystroke overlays, and speed control",
   "keywords": [
     "playwright",
