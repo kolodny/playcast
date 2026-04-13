@@ -15,7 +15,7 @@ await page.goto('https://news.ycombinator.com/front?day=2025-01-01');
 await page.locator('.titleline a').first().waitFor();
 
 const cast = create(page, { zoomTo: true });
-await cast.start('assets/hackernews.mp4');
+await cast.start('assets/hackernews.gif');
 await page.waitForTimeout(500);
 
 // Click the Déjà vu article (auto-zooms via zoomTo)

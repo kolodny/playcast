@@ -14,7 +14,7 @@ await page.setViewportSize({ width: 1280, height: 720 });
 await page.goto('https://en.wikipedia.org');
 
 const cast = create(page, { typeDelayMs: 100, settleMs: 10 });
-await cast.start('assets/basic.mp4');
+await cast.start('assets/basic.gif');
 
 // Type a search query
 const search = page.getByRole('searchbox', { name: 'Search Wikipedia' });
