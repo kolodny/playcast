@@ -53,6 +53,7 @@ export function create(page: Page, options: PlaycastOptions = {}) {
   let currentSpeed = 1;
   let recording = false;
   let basePath = '';
+  let outputExt = '.webm';
   let segmentIndex = 0;
   const segments: Segment[] = [];
   let disposeActions: Disposable | undefined;
@@ -235,6 +236,8 @@ export function create(page: Page, options: PlaycastOptions = {}) {
   };
 
   const start = async (path: string) => {
+    const extMatch = path.match(/\.[^.]+$/);
+    outputExt = extMatch ? extMatch[0] : '.webm';
     basePath = path.replace(/\.[^.]+$/, '');
     cdp = await page.context().newCDPSession(page);
     await patchScrollBehaviorForZoom();
@@ -247,8 +250,8 @@ export function create(page: Page, options: PlaycastOptions = {}) {
   const stop = async ({ skipFFMpeg }: { skipFFMpeg?: boolean } = {}) => {
     page.removeListener('load', reapplyAfterNavigation);
     await stopSegment();
-    const outputPath = `${basePath}.webm`;
-    if (segments.length === 1 && segments[0].speed === 1) {
+    const outputPath = `${basePath}${outputExt}`;
+    if (segments.length === 1 && segments[0].speed === 1 && outputExt === '.webm') {
       execSync(`mv "${segments[0].path}" "${outputPath}"`);
       return outputPath;
     } else {

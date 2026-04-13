@@ -15,7 +15,7 @@ await page.goto('https://todomvc.com/examples/react/dist/');
 await page.waitForTimeout(500);
 
 const cast = create(page, { scale: 2, typeDelayMs: 100 });
-await cast.start('assets/todomvc.webm');
+await cast.start('assets/todomvc.mp4');
 
 const input = page.getByPlaceholder('What needs to be done?');
 

@@ -1,9 +1,9 @@
 # playcast
 
-![npm version](https://img.shields.io/npm/v/playcast.svg)](https://www.npmjs.com/package/playcast)
+[![npm version](https://img.shields.io/npm/v/playcast.svg)](https://www.npmjs.com/package/playcast)
 [![npm downloads](https://img.shields.io/npm/dm/playcast.svg)](https://www.npmjs.com/package/playcast)
 
-Record a Playwright screencast with pinch-zoom, action annotations, and variable-speed segments. Produces a single `.webm` file stitched together with ffmpeg.
+Record a Playwright screencast with pinch-zoom, action annotations, and variable-speed segments. Produces `.webm` or `.mp4` output, with multi-segment stitching via ffmpeg.
 
 ## Install
 
@@ -11,7 +11,7 @@ Record a Playwright screencast with pinch-zoom, action annotations, and variable
 npm install playcast
 ```
 
-Peer dependency: `playwright` (>=1.59.0, requires `page.screencast` API). ffmpeg is required at runtime when using `setSpeed()` or `pause()`/`resume()` (i.e. multi-segment recordings).
+Peer dependency: `playwright` (>=1.59.0, requires `page.screencast` API). ffmpeg is required at runtime for multi-segment recordings and non-webm output formats (e.g. `.mp4`).
 
 ## Usage
 
@@ -61,11 +61,11 @@ Returns a playcast recorder bound to the given Playwright `Page`.
 
 #### `start(path)`
 
-Begin recording. `path` is the output file path (e.g. `'demo.webm'`).
+Begin recording. `path` is the output file path — the extension determines the format (e.g. `'demo.webm'` or `'demo.mp4'`).
 
 #### `stop(options?)`
 
-Stop recording and produce the final `.webm`. If multiple segments were created (via `setSpeed`, `pause`/`resume`), they are stitched with ffmpeg.
+Stop recording and produce the final video. If multiple segments were created (via `setSpeed`, `pause`/`resume`) or the output format isn't `.webm`, ffmpeg combines and/or transcodes the segments.
 
 - `options.skipFFMpeg` — if `true`, skip the ffmpeg combine step and just log the command.
 
@@ -118,7 +118,7 @@ Example recordings produced by the scripts in `demos/`:
 
 ### Hacker News — `click`, `zoom`, `setSpeed`, `pause`/`resume`
 
-<video src="assets/hackernews.webm" autoplay loop muted playsinline></video>
+<video src="assets/hackernews.mp4" autoplay loop muted playsinline></video>
 
 ### Timing — `pause`, `resume`, `setSpeed`, `showChapter`
 
@@ -128,7 +128,7 @@ Run them yourself with `npm run demos` or individually with `npx tsx demos/basic
 
 ## How it works
 
-Playcast uses Playwright's `page.screencast` API to capture video. Each call to `setSpeed()` or `pause()`/`resume()` creates a new segment file. When `stop()` is called, all segments are combined into a single `.webm` using ffmpeg with per-segment `setpts` filters for speed adjustment.
+Playcast uses Playwright's `page.screencast` API to capture video as `.webm` segments. Each call to `setSpeed()` or `pause()`/`resume()` creates a new segment. When `stop()` is called, ffmpeg combines segments with per-segment `setpts` filters for speed adjustment, and transcodes to the output format if needed (e.g. `.mp4`).
 
 Zoom is implemented via CDP `Input.synthesizePinchGesture`, with patches to prevent `scrollIntoView` and `focus()` from disrupting the zoomed viewport.
 

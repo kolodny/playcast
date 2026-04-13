@@ -44,7 +44,7 @@ await page.goto(`data:text/html,
 await page.waitForTimeout(1000);
 
 const cast = create(page, { showActions: false });
-await cast.start('assets/timing.webm');
+await cast.start('assets/timing.mp4');
 
 // Chapter: intro
 await page.screencast.showChapter('Recording at 1x', {
